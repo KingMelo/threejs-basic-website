@@ -1,6 +1,7 @@
 import './style.css'
 import * as THREE from 'three'
 import * as dat from 'lil-gui'
+import gsap from 'gsap'
 
 /**
  * Debug
@@ -52,7 +53,7 @@ const mesh2 = new THREE.Mesh(
 )
 
 const mesh3 = new THREE.Mesh(
-    new THREE.TorusGeometry( 0.8, 0.35, 100, 20),
+    new THREE.BoxGeometry( 0.8, 1, 1),
     material
 )
 
@@ -67,6 +68,32 @@ mesh3.position.x = 2
 scene.add(mesh1, mesh2, mesh3)
 
 const sectionMeshes = [ mesh1, mesh2, mesh3]
+
+//Particles
+const particlesCount = 200
+const positions = new Float32Array(particlesCount * 3)
+
+for(let i = 0; i < particlesCount; i++)
+{
+    positions[ i * 3 + 0 ] = (Math.random() - 0.5) * 10
+    positions[ i * 3 + 1 ] = objectsDistance * 0.4 - Math.random() * objectsDistance * sectionMeshes.length
+    positions[ i * 3 + 2 ] = (Math.random() - 0.5) * 10
+}
+
+const particlesGeometry = new THREE.BufferGeometry()
+particlesGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+
+//Material
+const particlesMaterial = new THREE.PointsMaterial({
+    color: parameters.materialColor,
+    sizeAttenuation: true, 
+    size: 0.03
+})
+
+// Points
+const particles = new THREE.Points(particlesGeometry, particlesMaterial)
+scene.add(particles)
+
 
 //Lights
 const directionalLight = new THREE.DirectionalLight('#ffffff', 1)
@@ -121,11 +148,28 @@ renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2))
 
 //Scroll
 let scrollY = window.scrollY
+let currentSection = 0
 
 window.addEventListener('scroll', () => 
 {
     scrollY = window.scrollY
+    
+    const newSection = Math.round(scrollY / sizes.height)
 
+    if(newSection != currentSection)
+    {
+        currentSection = newSection
+
+        gsap.to(
+            sectionMeshes[currentSection].rotation,
+            {
+                duration: 1.5,
+                ease: 'power2.inOut',
+                x: '+=6',
+                y: '+=3'
+            }
+        )
+    }
 })
 
 //Cursor
@@ -139,31 +183,37 @@ window.addEventListener('mousemove', (event) =>
     cursor.x = event.clientX / sizes.width - 0.5
     cursor.y = event.clientY / sizes.height - 0.5
 
-    console.log(cursor)
 })
 
 /**
  * Animate
  */
 const clock = new THREE.Clock()
+let previousTime = 0
 
 const tick = () =>
 {
     const elapsedTime = clock.getElapsedTime()
+    const deltaTime = elapsedTime - previousTime
+    previousTime = elapsedTime
 
+    
+
+    
+    
     //Animate camera
     camera.position.y = - scrollY / sizes.height * objectsDistance
 
     const parallaxX = cursor.x
     const parallaxY = - cursor.y
-    cameraGroup.position.x += (parallaxX - cameraGroup.position.x) * 0.02
-    cameraGroup.position.y += (parallaxY - cameraGroup.position.y) * 0.02
+    cameraGroup.position.x += (parallaxX - cameraGroup.position.x) * 5 * deltaTime
+    cameraGroup.position.y += (parallaxY - cameraGroup.position.y) * 5 * deltaTime
 
     // Animate meshes
     for(const mesh of sectionMeshes)
     {
-        mesh.rotation.x = elapsedTime * 0.1
-        mesh.rotation.y = elapsedTime * 0.12
+        mesh.rotation.x += deltaTime * 0.1
+        mesh.rotation.y += deltaTime * 0.12
     }
 
     // Render
